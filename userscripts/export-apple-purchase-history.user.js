@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Export Apple Purchase History
 // @namespace    https://zhuzi.dev
-// @version      v0.1
+// @version      v0.2
 // @description  Export Purchase History from Apple to a csv file
 // @author       Bambooom
 // @homepageURL  https://zhuzi.dev
@@ -23,6 +23,39 @@
     }
     count++
   }, 200);
+
+  let count2 = 0; // no loading-indicator count
+  function waitLoading() {
+    setTimeout(() => {
+      if (document.querySelector('.purchases > .loading-indicator')) {
+        console.log('still need loading: ');
+        waitLoading();
+      } else {
+        autoScroll();
+      }
+    }, 100);
+  }
+
+  function autoScroll() {
+    window.scrollTo(0, document.body.scrollHeight);
+
+    setTimeout(() => {
+      if (document.querySelector('.purchases > .loading-indicator')) {
+        count2 = 0;
+        console.log('wait for loading');
+        waitLoading();
+      } else {
+        count2++;
+
+        if (count2 < 5) {
+          console.log('going to scroll again');
+          autoScroll();
+        } else {
+          alert('All history loaded.');
+        }
+      }
+    }, 100);
+  }
 
   function getRows() {
     const blocks = Array.from(
@@ -71,33 +104,40 @@
     return rows;
   }
 
+  function exportData() {
+    const rows = getRows();
+    JsonToCSV.exportToCSV(
+      rows,
+      [
+        { title: 'Name', key: 'name' },
+        { title: 'Date', key: 'date' },
+        { title: 'Web Order Id', key: 'webOrderId' },
+        { title: 'Order Id', key: 'orderId' },
+        { title: 'Publisher', key: 'publisher' },
+        { title: 'Price', key: 'price' },
+        { title: 'Icon', key: 'icon' },
+      ],
+      'purchase-history-' +
+        new Date().toISOString().split('T')[0].replaceAll('-', '')
+    );
+  }
+
   function init() {
+    const div1 = document.createElement('div');
     const btn1 = document.createElement('button');
-    btn1.textContent = 'Export to csv';
-    btn1.classList.add('button', 'button-block', 'export-csv-button');
-    document.querySelector('.search-bar').after(btn1);
-    const btn2 = btn1.cloneNode(true);
-    document.querySelector('.purchases').after(btn2);
+    const btn2 = document.createElement('button');
+    btn1.textContent = 'Load all';
+    btn2.textContent = 'Export to csv';
+    btn1.classList.add('button', 'button-block', 'load-all-btn');
+    btn2.classList.add('button', 'button-block', 'load-all-btn');
+    btn2.style.marginLeft = '10px';
+    div1.appendChild(btn1);
+    div1.appendChild(btn2);
+    document.querySelector('.search-bar').after(div1);
+    const div2 = div1.cloneNode(true);
+    document.querySelector('.purchases').after(div2);
 
-    function exportData () {
-      const rows = getRows();
-      JsonToCSV.exportToCSV(
-        rows,
-        [
-          { title: 'Name', key: 'name' },
-          { title: 'Date', key: 'date' },
-          { title: 'Web Order Id', key: 'webOrderId' },
-          { title: 'Order Id', key: 'orderId' },
-          { title: 'Publisher', key: 'publisher' },
-          { title: 'Price', key: 'price' },
-          { title: 'Icon', key: 'icon' },
-        ],
-        'purchase-history-' +
-          new Date().toISOString().split('T')[0].replaceAll('-', '')
-      );
-    }
-
-    btn1.onclick = exportData;
+    btn1.onclick = autoScroll;
     btn2.onclick = exportData;
   }
 
